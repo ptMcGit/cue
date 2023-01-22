@@ -28,6 +28,8 @@ interface AppState {
 	readonly Output : OutputOption;
 	readonly Saved : boolean;
 	readonly ShowSaveURL : boolean;
+	readonly ShowZenMode : boolean;
+	readonly ZenCurrentExercise: number;
 }
 
 const optionSeparator = "@";
@@ -93,6 +95,8 @@ export class App extends React.PureComponent<AppProps, AppState> {
 			Output: undefined,
 			Saved: false,
 			ShowSaveURL: false,
+			ShowZenMode: false,
+			ZenCurrentExercise: 0,
 		};
 		this.state = this.urlHashToState();
 
@@ -102,6 +106,9 @@ export class App extends React.PureComponent<AppProps, AppState> {
 		this.inputDidChange = this.inputDidChange.bind(this);
 		this.updateOutput = this.updateOutput.bind(this);
 		this.share = this.share.bind(this);
+		this.zen = this.zen.bind(this);
+		this.zenNext = this.zenNext.bind(this);
+		this.zenPrev = this.zenPrev.bind(this);
 
 		props.WasmAPI.OnChange(this.updateOutput);
 		window.addEventListener("hashchange", this.urlHashChanged);
@@ -164,6 +171,21 @@ export class App extends React.PureComponent<AppProps, AppState> {
 						</div>
 						<div>
 							<input style={{ display: (this.state.ShowSaveURL ? "" : "none") }} readOnly={true} className="form-control form-control-sm" id="shareURL" value={window.location.toString()} />
+						</div>
+						<div>
+							<button className="btn btn-secondary btn-sm" type="button" onClick={this.zen}>
+								Zen
+							</button>
+						</div>
+						<div>
+						<button style={{ display: (this.state.ShowZenMode ? "" : "none") }} className="btn btn-secondary btn-sm" type="button" onClick={this.zenNext}>
+								Next
+							</button>
+						</div>
+						<div>
+						<button style={{ display: (this.state.ShowZenMode ? "" : "none") }} className="btn btn-secondary btn-sm" type="button" onClick={this.zenPrev}>
+								Prev
+							</button>
 						</div>
 					</div>
 					<div className="gap">{CUEVersion}</div>
@@ -303,6 +325,34 @@ export class App extends React.PureComponent<AppProps, AppState> {
 		this.rhsEditor.clearSelection();
 	}
 
+	private zenNext() : void {
+		let nextExercise = this.state.ZenCurrentExercise + 1;
+		if (nextExercise >= zenExercises.length)
+			return;
+
+		this.setState({ ...this.state, ZenCurrentExercise: nextExercise });
+		this.lhsEditor.setValue(zenExercises[nextExercise]);
+	}
+
+	private zenPrev() : void {
+		let prevExercise = this.state.ZenCurrentExercise - 1;
+		if (prevExercise < 0)
+			return;
+
+		this.setState({ ...this.state, ZenCurrentExercise: prevExercise });
+		this.lhsEditor.setValue(zenExercises[prevExercise]);
+	}
+
+	private zen() : void {
+		if (this.state.ShowZenMode) {
+			// TODO: save user's old content?
+			this.setState({ ...this.state, ShowZenMode: false });
+			this.lhsEditor.setValue("// exited Zen");
+		} else {
+			this.setState({ ...this.state, ShowZenMode: true });
+			this.lhsEditor.setValue(zenExercises[this.state.ZenCurrentExercise]);
+		}
+	}
 	private share() : void {
 		let contents = this.lhsEditor.getValue();
 		let req = fetch(this.urlPrefix() + "/.netlify/functions/snippets", {
@@ -321,3 +371,15 @@ export class App extends React.PureComponent<AppProps, AppState> {
 		});
 	}
 }
+
+const zenExercises = [
+	`// Welcome to the Zen of CUE.
+
+// Here are some snippets that will help you understand the language.`,
+
+	`// Types and Constraints (click Next)`,
+
+	`// Types can be used as values:
+
+a: int`,
+]
