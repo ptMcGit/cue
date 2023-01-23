@@ -373,13 +373,408 @@ export class App extends React.PureComponent<AppProps, AppState> {
 }
 
 const zenExercises = [
-	`// Welcome to the Zen of CUE.
+`// Welcome to the Zen of CUE.
+//
+// Here are some snippets that will help you understand the language.
+`,
+`// These values are said to be concrete
+//
+// They do not refer to types, but instances of a type
 
-// Here are some snippets that will help you understand the language.`,
+a: 1
+b: true
+c: 1.0
+d: "hello"
+`,
+`// Types can be used as values
 
-	`// Types and Constraints (click Next)`,
+w: int
+x: bool
+y: float
+z: string
+`,
+`// CUE will only export concrete values
+//
+// (SWITCH to output to JSON or YAML)
 
-	`// Types can be used as values:
+a: 1
+b: true
+c: 1.0
+d: "hello"
+`,
+`// CUE will complain if you try to export incomplete values.
+//
+// (SWITCH to output to JSON or YAML)
 
-a: int`,
+w: int
+x: bool
+y: float
+z: string
+`,
+`// A value that is a type is not a concrete value acts as a constraint
+
+a: int
+a: 1
+`,
+`// A type mismatch will cause an error
+
+a: int
+a: "1"
+`,
+`// We can use a range as a constraint
+
+a: <5
+a: 4
+`,
+`// Such constraints are also incomplete values:
+
+a: <5
+`,
+`// We can specify the same value as much as we like with no conflicts:
+
+a: 10
+a: 10
+a: 10
+`,
+`// Conflicting values cause an error:
+
+a: 10
+a: 11
+`,
+`// Cue orders all values in a value lattice.
+//
+// It is a hierarchy.
+// number subsumes int subsumes 1
+
+a: number
+b: int
+c: 1
+`,
+`// All lattices have a single value at the top (the root) and the bottom (the leaf).
+//
+// top ('_') is the most general type that subsumes all other types
+// bottom ('_|_') is at the bottom and is indicative of an error
+
+top:_
+a: number
+b: int
+c: 1
+bottom:_|_
+`,
+`// CUE provides special operators for expanding to different parts of the lattice implied by an expression.
+//
+// The meet operator ('&') is an n-ary operator that expands to the greatest lower bound of its operands
+// The join operator ('|') is an n-ary operator that expands to the greatest upper bound of its operands
+//
+// (SWITCH to output to JSON or YAML) to see that 'b' is incomplete
+
+a: 2 & int & number & _        // the greatest lower bound is 2
+b: _|_ | 2 | int | number | _  // the greatest upper bound is _
+
+`,
+`// We can create bounds with the meet operator:
+
+a: >=3 & <8
+a: 5
+`,
+`// We can also create lexicographical bounds:
+
+a: >"b" & <"d"
+a: "c"
+`,
+`// The join operator ('|') can be used to express disjunctions
+// AKA sum types, to allow different type constraints:
+
+a: int | string
+a: 10
+`,
+`// We can also use the join operator ('|') to express a constraint
+// that is an enumerated set:
+
+a: 1 | 2 | 3
+a: 1
+`,
+`// We can use the preference mark '*' to indicate a default value.
+//
+// In this case 'a' will default to 10.
+//
+// (SWITCH to output to JSON or YAML)
+
+a: int | *10
+`,
+`// We can hide values.
+
+_a: 1
+`,
+`// Hidden values do not need to be concrete
+//
+// (SWITCH to output to JSON or YAML)
+
+_a: int
+`,
+`// We can create definitions with '#', i.e. a user-defined type.
+//
+// (SWITCH to output to JSON or YAML)
+
+#a: int
+b: #a
+`,
+`// We can use default values with definitions also.
+//
+//(SWITCH to output to JSON or YAML)
+
+#a: int | *1
+b: #a
+`,
+`// Now a type definition with concrete value.
+//
+// (SWITCH to output to JSON or YAML)
+
+#a: int
+b: #a
+b: 1
+`,
+`// We can even hide definitions from other files.
+
+_#a: int
+`,
+`// We can use top ('_') to specify any type.
+
+#a: _
+
+b: #a
+b: 1
+
+c: #a
+c: "x"
+
+d: #a
+d: b
+`,
+`// CUE can interpolate values.
+//
+// Enclose the reference in '\\(' and ')'
+
+a: "b"
+(a): 2
+c: "\\(a)" // string interpolation
+`,
+`// The same value and type principles apply with lists.
+//
+// Closed lists have a fixed length:
+
+a: [int, int]
+a: [1, 2]
+`,
+`// Open lists as indicated by ('...') do not:
+
+b: [...int]
+b: [1, 2, 3]
+
+c: [...]
+c: ["1", 1]
+`,
+`// CUE behaves as expected when conflicts arise with lists
+//
+// values for 'a' conflict, there is a length mismatch for 'b'
+a:[1]
+a:[2]
+
+b:[]
+b:[1]
+`,
+`// We can get a lists length:
+
+b: [1, 2, 3]
+l: len(b)
+`,
+`// 'list' provides list methods:
+
+import "list"
+
+a: list.Repeat([int], 4) // list of 4 ints
+a: [1, 2, 3, 4]
+`,
+`// We can enforce uniqueness in a list with 'UniqueItems()'.
+//
+// List 'l' will propagate an error.
+
+import "list"
+
+l:[1, 2, 1]
+hasUniqueItems: list.UniqueItems(l) & true
+`,
+`// We can test for membership in a list with 'Contains()':
+
+import "list"
+
+l: [1, 2, 1]
+if list.Contains(l, 1) {
+o: "contains 1"
+}
+`,
+`// We can iterate over a list with 'Range()':
+
+import "list"
+
+l: ["a", "b", "c"]
+m: [for i in list.Range(0, len(l), 1) {"\\(i)": l[i]}]
+`,
+`// Structs are a key-value data structures similar to those in other programming languages:
+
+a: {}
+`,
+`// They can have fields:
+
+a:
+{
+"x": 1
+"y": 2
+}
+`,
+`// Accessing fields on structs:
+
+a: {
+b: 1
+"e-f": 2
+}
+
+c: a.b
+d: a["e-f"]
+`,
+`// References resolve to the nearest reference in the same scope.
+//
+// 'f: d' resolves to 3:
+
+a: {
+b: {
+c: 1
+d: 3
+e: {
+f: d
+}
+}
+d: 2
+}
+`,
+`// We can use an alias to access a shadowed field:
+
+a: {
+let D = d
+
+b: {
+
+c: 1
+d: 3
+e: {
+f: d
+g: D
+}
+}
+d: 2
+}
+`,
+`// An open struct is merged into another struct:
+
+a: {
+"y": 1
+}
+
+a: {
+"x": 1
+}
+`,
+`// Closed structs do not allow the structure to be changed:
+
+a: close({
+"x": 1
+})
+
+a: {
+"y": 2
+}
+`,
+`// We can subsume multiple structs with the meet operator:
+
+a: {
+"x": 1
+}
+
+b: {
+"y": 2
+}
+
+c: a & b
+`,
+`// Struct definitions are closed so extra fields are not allowed:
+
+#a: {
+"x": 1
+}
+
+b: {
+"y": 2
+}
+
+c: #a & b
+`,
+`// Struct definition acceptably merged:
+
+#a: {
+"x": int
+}
+
+b: {
+"x": 1
+}
+
+c: #a & b
+`,
+`// In this case, we do not wish to have '_b' as well.
+//
+// So, we hide it:
+
+#a: {
+"x": int
+}
+
+_b: {
+"x": 1
+}
+
+c: #a & _b
+`,
+`// We can have a disjunction of structs:
+
+a: {
+"x": 1
+"y": 2
+} | {
+"x": 3
+"y": 4
+}
+
+a: {
+"x": 1
+"y": 2
+}
+`,
+`// Structs can be nested:
+
+b: {
+a
+"y": 2
+}
+`,
+`// We can use templates to inject values into structs:
+
+a:[Name=_]: {
+"b": Name
+}
+
+a:"Jan":{
+}
+
+a: "Jon": {
+}`,
 ]
